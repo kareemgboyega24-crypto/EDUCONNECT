@@ -40,4 +40,27 @@ async function sendVerificationEmail(toEmail, fullName, code) {
   });
 }
 
-module.exports = { generateCode, sendVerificationEmail };
+async function sendPasswordResetEmail(toEmail, fullName, code) {
+  if (!transporter) {
+    console.warn(`Email not configured - password reset code for ${toEmail} is: ${code}`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from: `"EduConnect" <${process.env.GMAIL_USER}>`,
+    to: toEmail,
+    subject: 'Reset your EduConnect password',
+    text: `Hi ${fullName},\n\nSomeone requested a password reset for your EduConnect account. Your reset code is: ${code}\n\nThis code expires in 15 minutes. If you didn't request this, you can safely ignore this email - your password won't be changed.`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2 style="color: #161A2B;">EduConnect</h2>
+        <p>Hi ${fullName},</p>
+        <p>Someone requested a password reset for your account. Your reset code is:</p>
+        <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #161A2B; margin: 24px 0;">${code}</p>
+        <p style="color: #666; font-size: 14px;">This code expires in 15 minutes. If you didn't request this, you can safely ignore this email - your password won't be changed.</p>
+      </div>
+    `
+  });
+}
+
+module.exports = { generateCode, sendVerificationEmail, sendPasswordResetEmail };

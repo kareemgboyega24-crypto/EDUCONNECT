@@ -37,6 +37,14 @@ export function AuthProvider({ children }) {
     await client.post('/auth/resend-code', { email });
   }, []);
 
+  const forgotPassword = useCallback(async (email) => {
+    await client.post('/auth/forgot-password', { email });
+  }, []);
+
+  const resetPassword = useCallback(async (email, code, newPassword) => {
+    await client.post('/auth/reset-password', { email, code, newPassword });
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('educonnect_token');
     localStorage.removeItem('educonnect_user');
@@ -44,7 +52,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, verify, resendCode, logout }}>
+    <AuthContext.Provider value={{ user, login, signup, verify, resendCode, forgotPassword, resetPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

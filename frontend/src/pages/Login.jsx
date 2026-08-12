@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -45,6 +46,9 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-6 space-y-4">
           <h2 className="font-medium text-ink">Sign in</h2>
 
+          {location.state?.passwordReset && (
+            <p className="text-sm text-green-700 bg-green-500/10 rounded-lg px-3 py-2">Password reset — sign in with your new password.</p>
+          )}
           {error && <p className="text-sm text-clay bg-clay/10 rounded-lg px-3 py-2">{error}</p>}
 
           <div>
@@ -59,7 +63,10 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-ink/60">Password</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-ink/60">Password</label>
+              <Link to="/forgot-password" className="text-xs font-medium text-indigo-650 hover:underline">Forgot password?</Link>
+            </div>
             <input
               type="password"
               required

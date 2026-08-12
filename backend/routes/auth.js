@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
-const { generateCode, sendVerificationEmail } = require('../config/mailer');
+const { generateCode, sendVerificationEmail, sendPasswordResetEmail } = require('../config/mailer');
 
 const router = express.Router();
 
@@ -171,6 +171,69 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// POST /api/auth/forgot-password
+// Works identically for teachers and students - role has no bearing on this flow.
+// Always responds the same way regardless of whether the email exists, so the
+// response itself can't be used to check which emails have accounts.
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'email is required' });
+
+    const user = await User.findOne({ where: { email: email.toLowerCase() } });
+    if (user) {
+      const code = generateCode();
+      user.resetCode = code;
+      user.resetCodeExpires = new Date(Date.now() + CODE_VALID_MINUTES * 60 * 1000);
+      await user.save();
+
+      try {
+        await sendPasswordResetEmail(user.email, user.fullName, code);
+      } catch (mailErr) {
+        console.error('Failed to send password reset email:', mailErr);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ error: 'email, code and newPassword are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findOne({ where: { email: email.toLowerCase() } });
+    if (!user) return res.status(404).json({ error: 'No account found for that email' });
+
+    if (!user.resetCode || user.resetCode !== code) {
+      return res.status(400).json({ error: 'Incorrect code' });
+    }
+    if (!user.resetCodeExpires || user.resetCodeExpires < new Date()) {
+      return res.status(400).json({ error: 'Code expired - request a new one' });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.resetCode = null;
+    user.resetCodeExpires = null;
+    await user.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 

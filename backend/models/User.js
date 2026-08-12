@@ -41,6 +41,16 @@ const User = sequelize.define('User', {
   verificationCodeExpires: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  resetCode: {
+    // Kept separate from verificationCode - a user resetting their password shouldn't
+    // ever interfere with (or be blocked by) their original email-verification state.
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  resetCodeExpires: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   timestamps: true
