@@ -21,10 +21,8 @@ export function AuthProvider({ children }) {
     return applySession(data);
   }, []);
 
-  // Returns { requiresVerification: true, email } - does NOT log the user in.
-  // The account isn't usable until verify() succeeds.
-  const signup = useCallback(async (fullName, email, password, role) => {
-    const { data } = await client.post('/auth/signup', { fullName, email, password, role });
+  const signup = useCallback(async (fullName, email, password, role, adminInviteCode) => {
+    const { data } = await client.post('/auth/signup', { fullName, email, password, role, adminInviteCode });
     return data;
   }, []);
 
@@ -45,6 +43,11 @@ export function AuthProvider({ children }) {
     await client.post('/auth/reset-password', { email, code, newPassword });
   }, []);
 
+  const updateAccount = useCallback(async (updates) => {
+    const { data } = await client.patch('/auth/me', updates);
+    return applySession(data);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('educonnect_token');
     localStorage.removeItem('educonnect_user');
@@ -52,7 +55,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, verify, resendCode, forgotPassword, resetPassword, logout }}>
+    <AuthContext.Provider value={{ user, login, signup, verify, resendCode, forgotPassword, resetPassword, updateAccount, logout }}>
       {children}
     </AuthContext.Provider>
   );

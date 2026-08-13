@@ -1,5 +1,5 @@
 const express = require('express');
-const { Assessment, Course, Comment, User } = require('../models');
+const { Assessment, Course, Comment, User, Notification } = require('../models');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -13,7 +13,6 @@ async function canAccessAssessment(user, assessmentId) {
   return (isOwnerStudent || isCourseTeacher) ? assessment : null;
 }
 
-// POST /api/comments/:assessmentId - add a comment to an assessment's feedback thread
 router.post('/:assessmentId', async (req, res) => {
   const assessment = await canAccessAssessment(req.user, req.params.assessmentId);
   if (!assessment) return res.status(403).json({ error: 'Forbidden' });
@@ -24,7 +23,20 @@ router.post('/:assessmentId', async (req, res) => {
   const comment = await Comment.create({ assessmentId: assessment.id, authorId: req.user.id, body: body.trim() });
   const full = await Comment.findByPk(comment.id, { include: [{ model: User, as: 'author', attributes: ['id', 'fullName', 'role'] }] });
 
-  // Notify anyone in the assessment's live room, if a comments channel is open (see server.js sockets)
+  try {
+    const recipientId = req.user.role === 'teacher' ? assessment.studentId : assessment.Course.teacherId;
+    if (recipientId && recipientId !== req.user.id) {
+      await Notification.create({
+        userId: recipientId,
+        type: 'comment',
+        message: `${req.user.fullName} commented on "${assessment.title}"`,
+        link: `/assessments/${assessment.id}`
+      });
+    }
+  } catch (notifyErr) {
+    console.error('Failed to create comment notification (comment still posted):', notifyErr);
+  }
+
   req.app.get('io')?.to(`assessment:${assessment.id}`).emit('new_comment', full);
 
   res.status(201).json(full);

@@ -9,6 +9,7 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
+  const [adminInviteCode, setAdminInviteCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +18,7 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      const result = await signup(fullName, email, password, role);
+      const result = await signup(fullName, email, password, role, adminInviteCode);
       navigate('/verify', { state: { email: result.email } });
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong');
@@ -44,8 +45,8 @@ export default function Signup() {
 
           <div>
             <label className="text-xs font-medium text-ink/60">I am a…</label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              {['student', 'teacher'].map((r) => (
+            <div className="mt-1 grid grid-cols-3 gap-2">
+              {['student', 'teacher', 'admin'].map((r) => (
                 <button
                   type="button"
                   key={r}
@@ -59,6 +60,20 @@ export default function Signup() {
               ))}
             </div>
           </div>
+
+          {role === 'admin' && (
+            <div>
+              <label className="text-xs font-medium text-ink/60">Admin invite code</label>
+              <input
+                required
+                value={adminInviteCode}
+                onChange={(e) => setAdminInviteCode(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-650"
+                placeholder="Provided by your institution"
+              />
+              <p className="text-xs text-ink/40 mt-1">Admin accounts require a private invite code. Contact your existing administrator if you don't have one.</p>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-ink/60">Full name</label>

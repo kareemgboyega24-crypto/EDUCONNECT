@@ -7,8 +7,11 @@ import Signup from './pages/Signup.jsx';
 import VerifyEmail from './pages/VerifyEmail.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
 import Timetable from './pages/Timetable.jsx';
 import Assessments from './pages/Assessments.jsx';
+import Announcements from './pages/Announcements.jsx';
+import Settings from './pages/Settings.jsx';
 import AssessmentDetail from './pages/AssessmentDetail.jsx';
 import CallRoom from './pages/CallRoom.jsx';
 import Attendance from './pages/Attendance.jsx';
@@ -27,9 +30,6 @@ export default function App() {
           element={
             <ProtectedRoute>
               <div className="relative min-h-screen">
-                {/* Shared background: the branding photo, muted behind a light scrim so
-                    all existing dark-on-light text/cards stay fully legible without
-                    needing to re-theme every page. */}
                 <div
                   className="fixed inset-0 -z-20 bg-cover bg-center"
                   style={{ backgroundImage: "url('/login-bg.jpg')" }}
@@ -38,8 +38,11 @@ export default function App() {
                 <Navbar />
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/timetable" element={<Timetable />} />
                   <Route path="/assessments" element={<Assessments />} />
+                  <Route path="/announcements" element={<Announcements />} />
+                  <Route path="/settings" element={<Settings />} />
                   <Route path="/assessments/:id" element={<AssessmentDetail />} />
                   <Route path="/courses/:id/attendance" element={<Attendance />} />
                 </Routes>

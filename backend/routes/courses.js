@@ -1,18 +1,16 @@
 const express = require('express');
-const { Course, Enrollment, User, Attendance, TimetableEntry, Assessment, Document, Comment } = require('../models');
+const { Course, Enrollment, User, Attendance, TimetableEntry, Assessment, Document, Comment, Question, Answer, Announcement } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { deleteStoredFile } = require('../config/storage');
 
 const router = express.Router();
 router.use(requireAuth);
 
-// GET /api/courses - list courses relevant to the logged-in user
 router.get('/', async (req, res) => {
   if (req.user.role === 'teacher') {
     const courses = await Course.findAll({ where: { teacherId: req.user.id } });
     return res.json(courses);
   }
-  // student: only courses they're enrolled in
   const enrollments = await Enrollment.findAll({
     where: { studentId: req.user.id },
     include: [{ model: Course, include: [{ model: User, as: 'teacher', attributes: ['id', 'fullName'] }] }]
@@ -20,7 +18,6 @@ router.get('/', async (req, res) => {
   res.json(enrollments.map(e => e.Course));
 });
 
-// POST /api/courses - teacher creates a course
 router.post('/', requireRole('teacher'), async (req, res) => {
   const { name, code, description } = req.body;
   if (!name || !code) return res.status(400).json({ error: 'name and code are required' });
@@ -28,7 +25,6 @@ router.post('/', requireRole('teacher'), async (req, res) => {
   res.status(201).json(course);
 });
 
-// POST /api/courses/:id/enroll - teacher enrolls a student by email, or student self-enrolls via course code
 router.post('/:id/enroll', async (req, res) => {
   const course = await Course.findByPk(req.params.id);
   if (!course) return res.status(404).json({ error: 'Course not found' });
@@ -51,7 +47,6 @@ router.post('/:id/enroll', async (req, res) => {
   res.status(201).json(enrollment);
 });
 
-// GET /api/courses/:id/roster - teacher views enrolled students
 router.get('/:id/roster', requireRole('teacher'), async (req, res) => {
   const course = await Course.findByPk(req.params.id);
   if (!course || course.teacherId !== req.user.id) return res.status(404).json({ error: 'Course not found' });
@@ -63,7 +58,6 @@ router.get('/:id/roster', requireRole('teacher'), async (req, res) => {
   res.json(enrollments.map(e => e.student));
 });
 
-// GET /api/courses/:id/attendance - teacher views who has joined video calls for this course
 router.get('/:id/attendance', requireRole('teacher'), async (req, res) => {
   const course = await Course.findByPk(req.params.id);
   if (!course || course.teacherId !== req.user.id) return res.status(404).json({ error: 'Course not found' });
@@ -81,13 +75,45 @@ router.get('/:id/attendance', requireRole('teacher'), async (req, res) => {
   });
 });
 
-// DELETE /api/courses/:id - teacher deletes an entire course (e.g. created by mistake).
-// A course has enrollments, timetable slots, assessments (each with their own documents
-// and comments), and attendance records all pointing back to it via foreign keys set to
-// NO ACTION (a SQL Server requirement - see models/index.js), so everything has to be
-// removed in dependency order before the course row itself can go. Students see this
-// automatically once it's gone, since their dashboard/assessments queries read from
-// the same underlying tables - there's no separate "student copy" to clean up.
+router.get('/:id/grades/export', requireRole('teacher'), async (req, res) => {
+  try {
+    const course = await Course.findByPk(req.params.id);
+    if (!course || course.teacherId !== req.user.id) return res.status(404).json({ error: 'Course not found' });
+
+    const assessments = await Assessment.findAll({
+      where: { courseId: course.id },
+      include: [{ model: User, as: 'student', attributes: ['fullName', 'email'] }],
+      order: [[{ model: User, as: 'student' }, 'fullName', 'ASC']]
+    });
+
+    const escape = (value) => {
+      const str = String(value ?? '');
+      if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+      return str;
+    };
+
+    const header = ['Student Name', 'Student Email', 'Assessment', 'Status', 'Grade', 'Feedback Summary'];
+    const rows = assessments.map((a) => [
+      a.student?.fullName || '',
+      a.student?.email || '',
+      a.title,
+      a.status.replace('_', ' '),
+      a.grade || '',
+      a.feedbackSummary || ''
+    ]);
+
+    const csv = [header, ...rows].map((row) => row.map(escape).join(',')).join('\r\n');
+
+    const safeFileName = course.code.replace(/[^a-zA-Z0-9-_]/g, '_');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}-grades.csv"`);
+    res.send(csv);
+  } catch (err) {
+    console.error('GET /courses/:id/grades/export failed:', err);
+    res.status(500).json({ error: 'Failed to export grades' });
+  }
+});
+
 router.delete('/:id', requireRole('teacher'), async (req, res) => {
   try {
     const course = await Course.findByPk(req.params.id);
@@ -105,11 +131,17 @@ router.delete('/:id', requireRole('teacher'), async (req, res) => {
       }
       await Document.destroy({ where: { assessmentId: assessment.id } });
       await Comment.destroy({ where: { assessmentId: assessment.id } });
+      const questions = await Question.findAll({ where: { assessmentId: assessment.id } });
+      for (const q of questions) {
+        await Answer.destroy({ where: { questionId: q.id } });
+      }
+      await Question.destroy({ where: { assessmentId: assessment.id } });
     }
     await Assessment.destroy({ where: { courseId: course.id } });
 
     await Attendance.destroy({ where: { courseId: course.id } });
     await TimetableEntry.destroy({ where: { courseId: course.id } });
+    await Announcement.destroy({ where: { courseId: course.id } });
     await Enrollment.destroy({ where: { courseId: course.id } });
     await course.destroy();
 

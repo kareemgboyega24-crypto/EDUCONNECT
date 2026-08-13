@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -20,7 +20,11 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  useEffect(() => { loadCourses(); }, []);
+  useEffect(() => {
+    if (user.role !== 'admin') loadCourses();
+  }, []);
+
+  if (user.role === 'admin') return <Navigate to="/admin" replace />;
 
   const createCourse = async (e) => {
     e.preventDefault();
@@ -47,6 +51,17 @@ export default function Dashboard() {
     if (!window.confirm(`Delete "${courseName}"? This also removes its timetable, assessments, documents, and attendance records — for every enrolled student too. This can't be undone.`)) return;
     await client.delete(`/courses/${courseId}`);
     loadCourses();
+  };
+
+  const downloadGrades = (courseId, courseCode) => {
+    client.get(`/courses/${courseId}/grades/export`, { responseType: 'blob' }).then((res) => {
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${courseCode}-grades.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
   };
 
   return (
@@ -143,13 +158,19 @@ export default function Dashboard() {
                   <span className="flex-shrink-0 text-indigo-650">Copy</span>
                 </button>
               )}
-              <div className="flex gap-3 mt-4">
+              <div className="flex flex-wrap gap-x-3 gap-y-2 mt-4">
                 <Link to="/timetable" className="text-xs font-medium text-ink/60 hover:text-indigo-650">Schedule</Link>
                 <Link to="/assessments" className="text-xs font-medium text-ink/60 hover:text-indigo-650">Assessments</Link>
                 <Link to={`/call/${course.id}`} className="text-xs font-medium text-clay hover:text-clay/70">Start call</Link>
                 {user.role === 'teacher' && (
                   <>
                     <Link to={`/courses/${course.id}/attendance`} className="text-xs font-medium text-ink/60 hover:text-indigo-650">Attendance</Link>
+                    <button
+                      onClick={() => downloadGrades(course.id, course.code)}
+                      className="text-xs font-medium text-ink/60 hover:text-indigo-650"
+                    >
+                      Export grades
+                    </button>
                     <button
                       onClick={() => deleteCourse(course.id, course.name)}
                       className="text-xs font-medium text-clay/70 hover:text-clay hover:underline"

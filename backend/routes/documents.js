@@ -1,7 +1,7 @@
 const express = require('express');
 const { Assessment, Course, Document } = require('../models');
 const { requireAuth } = require('../middleware/auth');
-const { upload, finalizeUpload, streamFileToResponse, deleteStoredFile } = require('../config/storage');
+const { upload, finalizeUpload, streamFileToResponse, streamFileInline, deleteStoredFile } = require('../config/storage');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -14,8 +14,6 @@ async function canAccessAssessment(user, assessmentId) {
   return (isOwnerStudent || isCourseTeacher) ? assessment : null;
 }
 
-// POST /api/documents/:assessmentId - upload a document to an assessment
-// Used both for: student submitting their report, and teacher sending feedback documents back
 router.post('/:assessmentId', upload.single('file'), async (req, res) => {
   try {
     const assessment = await canAccessAssessment(req.user, req.params.assessmentId);
@@ -40,7 +38,6 @@ router.post('/:assessmentId', upload.single('file'), async (req, res) => {
   }
 });
 
-// GET /api/documents/:id/download
 router.get('/:id/download', async (req, res) => {
   try {
     const doc = await Document.findByPk(req.params.id);
@@ -56,7 +53,21 @@ router.get('/:id/download', async (req, res) => {
   }
 });
 
-// DELETE /api/documents/:id - only the person who uploaded a document can remove it
+router.get('/:id/preview', async (req, res) => {
+  try {
+    const doc = await Document.findByPk(req.params.id);
+    if (!doc) return res.status(404).json({ error: 'Not found' });
+
+    const assessment = await canAccessAssessment(req.user, doc.assessmentId);
+    if (!assessment) return res.status(403).json({ error: 'Forbidden' });
+
+    await streamFileInline(res, doc.storedFileName, doc.mimeType);
+  } catch (err) {
+    console.error('Preview failed:', err);
+    res.status(500).json({ error: 'Preview failed' });
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   try {
     const doc = await Document.findByPk(req.params.id);

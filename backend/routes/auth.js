@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { generateCode, sendVerificationEmail, sendPasswordResetEmail } = require('../config/mailer');
+const { requireAuth } = require('../middleware/auth');
+const { loginLimiter, authLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -19,15 +21,23 @@ function signToken(user) {
 // POST /api/auth/signup
 // Creates the account in an unverified state and emails a 6-digit code.
 // No token is issued yet - the account can't be used until /verify succeeds.
-router.post('/signup', async (req, res) => {
+router.post('/signup', authLimiter, async (req, res) => {
   try {
-    const { fullName, email, password, role } = req.body;
+    const { fullName, email, password, role, adminInviteCode } = req.body;
 
     if (!fullName || !email || !password || !role) {
       return res.status(400).json({ error: 'fullName, email, password and role are required' });
     }
-    if (!['teacher', 'student'].includes(role)) {
-      return res.status(400).json({ error: 'role must be "teacher" or "student"' });
+    if (!['teacher', 'student', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'role must be "teacher", "student", or "admin"' });
+    }
+    if (role === 'admin') {
+      // Admin self-registration is gated behind a secret invite code (set as an
+      // environment variable, never committed to the repo) - without this, anyone
+      // could grant themselves full control over every user and course.
+      if (!process.env.ADMIN_INVITE_CODE || adminInviteCode !== process.env.ADMIN_INVITE_CODE) {
+        return res.status(403).json({ error: 'Invalid admin invite code' });
+      }
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
@@ -115,7 +125,7 @@ router.post('/verify', async (req, res) => {
 });
 
 // POST /api/auth/resend-code
-router.post('/resend-code', async (req, res) => {
+router.post('/resend-code', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'email is required' });
@@ -138,7 +148,7 @@ router.post('/resend-code', async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -163,6 +173,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    if (!user.active) {
+      return res.status(403).json({ error: 'This account has been suspended. Contact an administrator.' });
+    }
+
     const token = signToken(user);
     res.json({
       token,
@@ -178,7 +192,7 @@ router.post('/login', async (req, res) => {
 // Works identically for teachers and students - role has no bearing on this flow.
 // Always responds the same way regardless of whether the email exists, so the
 // response itself can't be used to check which emails have accounts.
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'email is required' });
@@ -234,6 +248,52 @@ router.post('/reset-password', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+// GET /api/auth/me - current user's own profile
+router.get('/me', requireAuth, async (req, res) => {
+  const user = await User.findByPk(req.user.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor });
+});
+
+// PATCH /api/auth/me - update your own name and/or password.
+// Changing the password requires the current password, same as any account-security
+// best practice - prevents someone with a briefly-unlocked session from silently
+// locking the real owner out.
+router.patch('/me', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const { fullName, currentPassword, newPassword } = req.body;
+
+    if (fullName !== undefined) {
+      if (!fullName.trim()) return res.status(400).json({ error: 'Name cannot be empty' });
+      user.fullName = fullName.trim();
+    }
+
+    if (newPassword) {
+      if (!currentPassword) return res.status(400).json({ error: 'Enter your current password to set a new one' });
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+      if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      user.passwordHash = await bcrypt.hash(newPassword, 10);
+    }
+
+    await user.save();
+
+    // Re-issue the token since it carries fullName - keeps the session consistent
+    // with the update without requiring the user to log in again.
+    const token = signToken(user);
+    res.json({
+      token,
+      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor }
+    });
+  } catch (err) {
+    console.error('PATCH /auth/me failed:', err);
+    res.status(500).json({ error: 'Failed to update account' });
   }
 });
 

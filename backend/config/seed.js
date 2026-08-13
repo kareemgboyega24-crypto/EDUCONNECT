@@ -11,6 +11,12 @@ async function seed() {
 
   const passwordHash = await bcrypt.hash('password123', 10);
 
+  const [admin] = await User.findOrCreate({
+    where: { email: 'admin@educonnect.dev' },
+    defaults: { fullName: 'Admin', passwordHash, role: 'admin', avatarColor: '#161A2B', emailVerified: true, active: true }
+  });
+  if (!admin.emailVerified) { admin.emailVerified = true; await admin.save(); }
+
   const [teacher] = await User.findOrCreate({
     where: { email: 'teacher@educonnect.dev' },
     defaults: { fullName: 'Dr. Amara Osei', passwordHash, role: 'teacher', avatarColor: '#5B6CFF', emailVerified: true }
@@ -57,6 +63,7 @@ async function seed() {
   });
 
   console.log('\nSeed complete. Test accounts (all use password: password123):\n');
+  console.log('  Admin   : admin@educonnect.dev');
   console.log('  Teacher : teacher@educonnect.dev');
   console.log('  Student : student1@educonnect.dev  (has a submitted assessment)');
   console.log('  Student : student2@educonnect.dev\n');

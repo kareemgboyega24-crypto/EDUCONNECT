@@ -22,8 +22,19 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('teacher', 'student'),
+    // Plain string rather than ENUM: SQL Server bakes ENUM into a CHECK constraint
+    // at table-creation time, which does NOT auto-update on an existing table when
+    // a new valid role (e.g. 'admin') is introduced later - the same issue we hit
+    // with Assessment.status. A string with app-level validation avoids ever
+    // needing another database migration for a future role value.
+    type: DataTypes.STRING(20),
     allowNull: false
+  },
+  active: {
+    // Lets an admin suspend an account without deleting it (and its history).
+    // A suspended user can no longer log in, but every record they created stays intact.
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
   },
   avatarColor: {
     // used purely for consistent UI avatar coloring, no upload needed
@@ -49,6 +60,13 @@ const User = sequelize.define('User', {
     allowNull: true
   },
   resetCodeExpires: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  lastAnnouncementsViewedAt: {
+    // Powers the notification bell: any announcement created after this timestamp
+    // counts as "unread". Simpler than a per-announcement read-receipt table, and
+    // sufficient since announcements are a broadcast feed, not individual messages.
     type: DataTypes.DATE,
     allowNull: true
   }
