@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 export default function Settings() {
   const { user, updateAccount } = useAuth();
   const [fullName, setFullName] = useState(user.fullName);
+  const [studentIdNumber, setStudentIdNumber] = useState(user.studentIdNumber || '');
   const [savingName, setSavingName] = useState(false);
   const [nameMessage, setNameMessage] = useState('');
 
@@ -19,7 +20,9 @@ export default function Settings() {
     setSavingName(true);
     setNameMessage('');
     try {
-      await updateAccount({ fullName });
+      const updates = { fullName };
+      if (user.role === 'student') updates.studentIdNumber = studentIdNumber;
+      await updateAccount(updates);
       setNameMessage('Saved.');
       setTimeout(() => setNameMessage(''), 3000);
     } finally {
@@ -66,8 +69,22 @@ export default function Settings() {
               className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm"
             />
           </div>
-          <button type="submit" disabled={savingName || fullName === user.fullName} className="bg-ink text-white text-sm font-medium rounded-lg px-4 py-2 hover:bg-indigo-650 disabled:opacity-50">
-            {savingName ? 'Saving…' : 'Save name'}
+          {user.role === 'student' && (
+            <div>
+              <label className="text-xs font-medium text-ink/60">Student ID</label>
+              <input
+                required value={studentIdNumber} onChange={(e) => setStudentIdNumber(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm"
+                placeholder="e.g. B00123456"
+              />
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={savingName || (fullName === user.fullName && studentIdNumber === (user.studentIdNumber || ''))}
+            className="bg-ink text-white text-sm font-medium rounded-lg px-4 py-2 hover:bg-indigo-650 disabled:opacity-50"
+          >
+            {savingName ? 'Saving…' : 'Save changes'}
           </button>
         </form>
       </div>

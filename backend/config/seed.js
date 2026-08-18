@@ -19,9 +19,10 @@ async function seed() {
 
   const [teacher] = await User.findOrCreate({
     where: { email: 'teacher@educonnect.dev' },
-    defaults: { fullName: 'Dr. Amara Osei', passwordHash, role: 'teacher', avatarColor: '#5B6CFF', emailVerified: true }
+    defaults: { fullName: 'Dr. Amara Osei', passwordHash, role: 'lecturer', avatarColor: '#5B6CFF', emailVerified: true }
   });
   if (!teacher.emailVerified) { teacher.emailVerified = true; await teacher.save(); }
+  if (teacher.role !== 'lecturer') { teacher.role = 'lecturer'; await teacher.save(); }
 
   const [student1] = await User.findOrCreate({
     where: { email: 'student1@educonnect.dev' },
@@ -64,7 +65,7 @@ async function seed() {
 
   console.log('\nSeed complete. Test accounts (all use password: password123):\n');
   console.log('  Admin   : admin@educonnect.dev');
-  console.log('  Teacher : teacher@educonnect.dev');
+  console.log('  Lecturer : teacher@educonnect.dev');
   console.log('  Student : student1@educonnect.dev  (has a submitted assessment)');
   console.log('  Student : student2@educonnect.dev\n');
   process.exit(0);

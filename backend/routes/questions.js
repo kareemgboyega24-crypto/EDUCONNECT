@@ -11,7 +11,7 @@ async function loadAssessmentWithCourse(assessmentId) {
   return Assessment.findByPk(assessmentId, { include: Course });
 }
 
-router.post('/', requireRole('teacher'), async (req, res) => {
+router.post('/', requireRole('lecturer'), async (req, res) => {
   try {
     const { assessmentId, type, prompt, options, correctOptionIndex, points } = req.body;
     if (!assessmentId || !prompt) return res.status(400).json({ error: 'assessmentId and prompt are required' });
@@ -51,7 +51,7 @@ router.post('/', requireRole('teacher'), async (req, res) => {
   }
 });
 
-router.delete('/:questionId', requireRole('teacher'), async (req, res) => {
+router.delete('/:questionId', requireRole('lecturer'), async (req, res) => {
   try {
     const question = await Question.findByPk(req.params.questionId);
     if (!question) return res.status(404).json({ error: 'Question not found' });
@@ -69,7 +69,7 @@ router.delete('/:questionId', requireRole('teacher'), async (req, res) => {
   }
 });
 
-router.patch('/:questionId', requireRole('teacher'), async (req, res) => {
+router.patch('/:questionId', requireRole('lecturer'), async (req, res) => {
   try {
     const question = await Question.findByPk(req.params.questionId);
     if (!question) return res.status(404).json({ error: 'Question not found' });
@@ -154,7 +154,7 @@ router.post('/:questionId/answer', requireRole('student'), async (req, res) => {
   }
 });
 
-router.patch('/:questionId/grade', requireRole('teacher'), async (req, res) => {
+router.patch('/:questionId/grade', requireRole('lecturer'), async (req, res) => {
   try {
     const question = await Question.findByPk(req.params.questionId);
     if (!question) return res.status(404).json({ error: 'Question not found' });

@@ -6,14 +6,13 @@ const { deleteStoredFile } = require('../config/storage');
 const router = express.Router();
 router.use(requireAuth, requireRole('admin'));
 
-const VALID_ROLES = ['admin', 'teacher', 'student'];
+const VALID_ROLES = ['admin', 'lecturer', 'student'];
 
-// GET /api/admin/stats - institution-wide overview
 router.get('/stats', async (req, res) => {
   try {
     const [userCount, teacherCount, studentCount, courseCount, assessmentCount, enrollmentCount] = await Promise.all([
       User.count(),
-      User.count({ where: { role: 'teacher' } }),
+      User.count({ where: { role: 'lecturer' } }),
       User.count({ where: { role: 'student' } }),
       Course.count(),
       Assessment.count(),
@@ -26,7 +25,6 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET /api/admin/users - every account on the platform
 router.get('/users', async (req, res) => {
   try {
     const users = await User.findAll({
@@ -40,7 +38,6 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// PATCH /api/admin/users/:id - suspend/reactivate an account, or change its role
 router.patch('/users/:id', async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
@@ -68,7 +65,6 @@ router.patch('/users/:id', async (req, res) => {
   }
 });
 
-// GET /api/admin/courses - every course on the platform, with basic rollup stats
 router.get('/courses', async (req, res) => {
   try {
     const courses = await Course.findAll({
@@ -99,8 +95,6 @@ router.get('/courses', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/courses/:id - moderation override, not scoped to a specific teacher.
-// Same cascade cleanup as the teacher-facing course delete (see routes/courses.js).
 router.delete('/courses/:id', async (req, res) => {
   try {
     const course = await Course.findByPk(req.params.id);

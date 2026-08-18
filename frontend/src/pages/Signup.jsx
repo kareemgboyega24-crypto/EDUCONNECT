@@ -10,6 +10,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('student');
   const [adminInviteCode, setAdminInviteCode] = useState('');
+  const [studentIdNumber, setStudentIdNumber] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +19,7 @@ export default function Signup() {
     setError('');
     setLoading(true);
     try {
-      const result = await signup(fullName, email, password, role, adminInviteCode);
+      const result = await signup(fullName, email, password, role, adminInviteCode, studentIdNumber);
       navigate('/verify', { state: { email: result.email } });
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong');
@@ -46,7 +47,7 @@ export default function Signup() {
           <div>
             <label className="text-xs font-medium text-ink/60">I am a…</label>
             <div className="mt-1 grid grid-cols-3 gap-2">
-              {['student', 'teacher', 'admin'].map((r) => (
+              {['student', 'lecturer', 'admin'].map((r) => (
                 <button
                   type="button"
                   key={r}
@@ -85,6 +86,19 @@ export default function Signup() {
               placeholder="Ada Lovelace"
             />
           </div>
+
+          {role === 'student' && (
+            <div>
+              <label className="text-xs font-medium text-ink/60">Student ID</label>
+              <input
+                required
+                value={studentIdNumber}
+                onChange={(e) => setStudentIdNumber(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-ink/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-650"
+                placeholder="e.g. B00123456"
+              />
+            </div>
+          )}
           <div>
             <label className="text-xs font-medium text-ink/60">Email</label>
             <input

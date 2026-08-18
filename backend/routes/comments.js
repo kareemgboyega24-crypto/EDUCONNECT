@@ -9,7 +9,7 @@ async function canAccessAssessment(user, assessmentId) {
   const assessment = await Assessment.findByPk(assessmentId, { include: Course });
   if (!assessment) return null;
   const isOwnerStudent = user.role === 'student' && assessment.studentId === user.id;
-  const isCourseTeacher = user.role === 'teacher' && assessment.Course.teacherId === user.id;
+  const isCourseTeacher = user.role === 'lecturer' && assessment.Course.teacherId === user.id;
   return (isOwnerStudent || isCourseTeacher) ? assessment : null;
 }
 
@@ -24,7 +24,7 @@ router.post('/:assessmentId', async (req, res) => {
   const full = await Comment.findByPk(comment.id, { include: [{ model: User, as: 'author', attributes: ['id', 'fullName', 'role'] }] });
 
   try {
-    const recipientId = req.user.role === 'teacher' ? assessment.studentId : assessment.Course.teacherId;
+    const recipientId = req.user.role === 'lecturer' ? assessment.studentId : assessment.Course.teacherId;
     if (recipientId && recipientId !== req.user.id) {
       await Notification.create({
         userId: recipientId,

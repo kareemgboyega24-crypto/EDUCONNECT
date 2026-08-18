@@ -72,7 +72,7 @@ export default function ForgotPassword() {
           </h1>
           <p className="text-white/80 mt-2 text-sm drop-shadow">
             {step === 'request'
-              ? 'Works for both teacher and student accounts.'
+              ? 'Works for both lecturer and student accounts.'
               : <>We sent a 6-digit code to <span className="font-medium text-white">{email}</span></>}
           </p>
         </div>

@@ -211,10 +211,10 @@ export default function AssessmentDetail() {
           <h1 className="font-display text-3xl font-semibold text-ink">{assessment.title}</h1>
           <p className="text-ink/50 mt-1">
             {assessment.Course?.code} — {assessment.Course?.name}
-            {user.role === 'teacher' && ` · ${assessment.student?.fullName}`}
+            {user.role === 'lecturer' && ` · ${assessment.student?.fullName}`}
           </p>
         </div>
-        {user.role === 'teacher' && (
+        {user.role === 'lecturer' && (
           <div className="flex items-center gap-2">
             <select
               value={assessment.status}
@@ -278,7 +278,7 @@ export default function AssessmentDetail() {
           <h3 className="font-medium text-ink mb-3">Status &amp; grade</h3>
           <p className="text-sm text-ink/60 capitalize mb-3">Status: <span className="font-medium text-ink">{assessment.status.replace('_', ' ')}</span></p>
 
-          {user.role === 'teacher' ? (
+          {user.role === 'lecturer' ? (
             <form onSubmit={saveGrade} className="space-y-2">
               <div>
                 <label className="text-xs font-medium text-ink/60">Grade</label>
@@ -317,7 +317,7 @@ export default function AssessmentDetail() {
       <div className="bg-white rounded-2xl border border-ink/10 p-5 mb-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium text-ink">Questions</h3>
-          {user.role === 'teacher' && (
+          {user.role === 'lecturer' && (
             <button
               onClick={() => showQuestionForm ? resetQuestionForm() : setShowQuestionForm(true)}
               className="text-xs font-medium text-indigo-650 hover:underline"
@@ -404,7 +404,7 @@ export default function AssessmentDetail() {
                     {qi + 1}. {q.prompt}
                     <span className="ml-2 text-xs font-normal text-ink/40">({q.points} pt{q.points !== 1 ? 's' : ''})</span>
                   </p>
-                  {user.role === 'teacher' && (
+                  {user.role === 'lecturer' && (
                     <div className="flex-shrink-0 flex items-center gap-3">
                       <button onClick={() => startEditQuestion(q)} className="text-xs font-medium text-indigo-650 hover:underline">
                         Edit
@@ -426,12 +426,12 @@ export default function AssessmentDetail() {
                       if (revealAnswerKey && isCorrectOption) style = 'border-green-500 bg-green-500/5';
                       else if (isSelected && revealAnswerKey && !isCorrectOption) style = 'border-clay bg-clay/5';
                       return (
-                        <label key={oi} className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-2 cursor-pointer ${style} ${user.role === 'teacher' ? 'cursor-default' : ''}`}>
+                        <label key={oi} className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-2 cursor-pointer ${style} ${user.role === 'lecturer' ? 'cursor-default' : ''}`}>
                           <input
                             type="radio"
                             name={`q-${q.id}`}
                             checked={isSelected}
-                            disabled={user.role === 'teacher'}
+                            disabled={user.role === 'lecturer'}
                             onChange={() => submitMultipleChoice(q.id, oi)}
                           />
                           <span className="text-ink/80">{opt}</span>

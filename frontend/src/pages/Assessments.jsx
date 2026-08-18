@@ -39,7 +39,7 @@ export default function Assessments() {
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    if (user.role === 'teacher' && form.courseId) {
+    if (user.role === 'lecturer' && form.courseId) {
       client.get(`/courses/${form.courseId}/roster`).then(({ data }) => setRoster(data));
     } else {
       setRoster([]);
@@ -111,11 +111,11 @@ export default function Assessments() {
         <div>
           <h1 className="font-display text-3xl font-semibold text-ink">Assessments</h1>
           <p className="text-ink/50 mt-1">
-            {user.role === 'teacher' ? 'Assign work to students and review what they submit.' : 'Submit reports and track feedback.'}
+            {user.role === 'lecturer' ? 'Assign work to students and review what they submit.' : 'Submit reports and track feedback.'}
           </p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="bg-ink text-white rounded-full px-5 py-2.5 text-sm font-medium hover:bg-indigo-650">
-          {user.role === 'teacher' ? '+ Assign assessment' : '+ New submission'}
+          {user.role === 'lecturer' ? '+ Assign assessment' : '+ New submission'}
         </button>
       </div>
 
@@ -130,7 +130,7 @@ export default function Assessments() {
               {courses.map(c => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
             </select>
 
-            {user.role === 'teacher' && !bulkMode && (
+            {user.role === 'lecturer' && !bulkMode && (
               <select
                 required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })}
                 className="rounded-lg border border-ink/15 px-3 py-2 text-sm"
@@ -146,18 +146,18 @@ export default function Assessments() {
             <input
               required placeholder="Title (e.g. Lab Report 3)" value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className={`rounded-lg border border-ink/15 px-3 py-2 text-sm ${user.role === 'teacher' && !bulkMode ? '' : 'sm:col-span-2'}`}
+              className={`rounded-lg border border-ink/15 px-3 py-2 text-sm ${user.role === 'lecturer' && !bulkMode ? '' : 'sm:col-span-2'}`}
             />
           </div>
 
-          {user.role === 'teacher' && (
+          {user.role === 'lecturer' && (
             <label className="flex items-center gap-2 text-sm text-ink/70">
               <input type="checkbox" checked={bulkMode} onChange={(e) => setBulkMode(e.target.checked)} />
               Assign to the entire class instead of one student
             </label>
           )}
 
-          {user.role === 'teacher' && bulkMode && (
+          {user.role === 'lecturer' && bulkMode && (
             <div className="bg-mist rounded-xl p-4 space-y-3">
               <p className="text-xs font-medium text-ink/60">Optional: build a quiz once, and every enrolled student gets their own copy of these questions.</p>
 
@@ -233,7 +233,7 @@ export default function Assessments() {
           <button type="submit" disabled={bulkSubmitting} className="w-full bg-ink text-white rounded-lg py-2.5 text-sm font-medium hover:bg-indigo-650 disabled:opacity-50">
             {bulkSubmitting
               ? 'Assigning…'
-              : user.role === 'teacher'
+              : user.role === 'lecturer'
                 ? (bulkMode ? 'Assign to entire class' : 'Assign to student')
                 : 'Create — then attach your document'}
           </button>
@@ -254,7 +254,7 @@ export default function Assessments() {
               <div>
                 <p className="font-medium text-ink">{a.title}</p>
                 <p className="text-sm text-ink/50">
-                  {a.Course?.code} {user.role === 'teacher' && a.student ? `· ${a.student.fullName}` : ''}
+                  {a.Course?.code} {user.role === 'lecturer' && a.student ? `· ${a.student.fullName}` : ''}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -266,7 +266,7 @@ export default function Assessments() {
                 <span className={`text-xs font-medium px-3 py-1 rounded-full capitalize ${STATUS_STYLES[a.status]}`}>
                   {a.status.replace('_', ' ')}
                 </span>
-                {user.role === 'teacher' && (
+                {user.role === 'lecturer' && (
                   <button
                     onClick={(e) => deleteAssessment(e, a.id)}
                     className="text-xs font-medium text-clay/70 hover:text-clay hover:underline"

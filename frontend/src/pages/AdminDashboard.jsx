@@ -8,7 +8,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [tab, setTab] = useState('users'); // 'users' | 'courses'
+  const [tab, setTab] = useState('users');
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
@@ -24,8 +24,6 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
-  // All hooks run unconditionally, as React requires; the redirect happens
-  // in the render return below rather than short-circuiting before the hooks.
   useEffect(() => {
     if (user.role === 'admin') load();
   }, []);
@@ -33,7 +31,7 @@ export default function AdminDashboard() {
   if (user.role !== 'admin') return <Navigate to="/" replace />;
 
   const toggleActive = async (u) => {
-    if (u.id === user.id) return; // guarded server-side too, but keep the UI honest
+    if (u.id === user.id) return;
     await client.patch(`/admin/users/${u.id}`, { active: !u.active });
     load();
   };
@@ -60,7 +58,7 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total users" value={stats.userCount} />
-        <StatCard label="Teachers" value={stats.teacherCount} />
+        <StatCard label="Lecturers" value={stats.teacherCount} />
         <StatCard label="Students" value={stats.studentCount} />
         <StatCard label="Courses" value={stats.courseCount} />
       </div>
@@ -81,7 +79,7 @@ export default function AdminDashboard() {
       </div>
 
       {tab === 'users' ? (
-        <div className="bg-white rounded-2xl border border-ink/10 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-ink/10 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-mist text-ink/60 text-xs uppercase tracking-wide">
               <tr>
@@ -90,7 +88,7 @@ export default function AdminDashboard() {
                 <th className="text-left px-5 py-3 font-medium">Role</th>
                 <th className="text-left px-5 py-3 font-medium">Status</th>
                 <th className="text-left px-5 py-3 font-medium">Verified</th>
-                <th className="text-right px-5 py-3 font-medium">Actions</th>
+                <th className="text-right px-5 py-3 font-medium whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -117,7 +115,7 @@ export default function AdminDashboard() {
                       className="rounded-lg border border-ink/15 px-2 py-1 text-xs capitalize disabled:opacity-50"
                     >
                       <option value="student">Student</option>
-                      <option value="teacher">Teacher</option>
+                      <option value="lecturer">Lecturer</option>
                       <option value="admin">Admin</option>
                     </select>
                   </td>
@@ -142,15 +140,15 @@ export default function AdminDashboard() {
           </table>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-ink/10 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-ink/10 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-mist text-ink/60 text-xs uppercase tracking-wide">
               <tr>
                 <th className="text-left px-5 py-3 font-medium">Course</th>
-                <th className="text-left px-5 py-3 font-medium">Teacher</th>
+                <th className="text-left px-5 py-3 font-medium">Lecturer</th>
                 <th className="text-left px-5 py-3 font-medium">Enrolled</th>
                 <th className="text-left px-5 py-3 font-medium">Assessments</th>
-                <th className="text-right px-5 py-3 font-medium">Actions</th>
+                <th className="text-right px-5 py-3 font-medium whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>

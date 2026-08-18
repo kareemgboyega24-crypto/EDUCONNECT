@@ -46,7 +46,7 @@ export default function Timetable() {
           <h1 className="font-display text-3xl font-semibold text-ink">Your timetable</h1>
           <p className="text-ink/50 mt-1">Weekly schedule across all your courses.</p>
         </div>
-        {user.role === 'teacher' && (
+        {user.role === 'lecturer' && (
           <button
             onClick={() => setShowForm(!showForm)}
             className="bg-ink text-white rounded-full px-5 py-2.5 text-sm font-medium hover:bg-indigo-650"
@@ -109,7 +109,7 @@ export default function Timetable() {
                   <li key={entry.id} className="border-l-2 border-indigo-650 pl-3">
                     <p className="text-sm font-medium text-ink">{entry.Course?.name}</p>
                     <p className="text-xs text-ink/50">{entry.startTime}–{entry.endTime} {entry.location && `· ${entry.location}`}</p>
-                    {user.role === 'teacher' && (
+                    {user.role === 'lecturer' && (
                       <button onClick={() => removeEntry(entry.id)} className="text-xs text-clay/70 hover:text-clay mt-1">Remove</button>
                     )}
                   </li>

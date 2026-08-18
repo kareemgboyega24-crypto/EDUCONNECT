@@ -72,11 +72,11 @@ export default function Dashboard() {
             Welcome back, {user.fullName.split(' ')[0]}
           </h1>
           <p className="text-ink/50 mt-1">
-            {user.role === 'teacher' ? 'Your courses at a glance.' : 'Courses you\'re enrolled in.'}
+            {user.role === 'lecturer' ? 'Your courses at a glance.' : 'Courses you\'re enrolled in.'}
           </p>
         </div>
 
-        {user.role === 'teacher' ? (
+        {user.role === 'lecturer' ? (
           <button
             onClick={() => setShowNewCourse(!showNewCourse)}
             className="bg-ink text-white rounded-full px-5 py-2.5 text-sm font-medium hover:bg-indigo-650 transition-colors"
@@ -118,7 +118,7 @@ export default function Dashboard() {
 
       {showJoinCourse && (
         <form onSubmit={joinCourse} className="bg-white rounded-2xl border border-ink/10 p-6 mb-8 space-y-3">
-          <p className="text-sm text-ink/60">Ask your teacher for the course ID to join.</p>
+          <p className="text-sm text-ink/60">Ask your lecturer for the course ID to join.</p>
           {message && <p className="text-sm text-clay">{message}</p>}
           <div className="flex gap-3">
             <input
@@ -138,7 +138,7 @@ export default function Dashboard() {
       ) : courses.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-ink/20 p-12 text-center">
           <p className="text-ink/50">
-            {user.role === 'teacher' ? 'No courses yet — create your first one above.' : 'You haven\'t joined a course yet.'}
+            {user.role === 'lecturer' ? 'No courses yet — create your first one above.' : 'You haven\'t joined a course yet.'}
           </p>
         </div>
       ) : (
@@ -148,7 +148,7 @@ export default function Dashboard() {
               <p className="text-xs font-medium text-indigo-650 uppercase tracking-wide">{course.code}</p>
               <h3 className="font-display text-lg font-semibold text-ink mt-1">{course.name}</h3>
               {course.description && <p className="text-sm text-ink/50 mt-1">{course.description}</p>}
-              {user.role === 'teacher' && (
+              {user.role === 'lecturer' && (
                 <button
                   onClick={() => navigator.clipboard.writeText(course.id)}
                   className="text-xs text-ink/40 hover:text-indigo-650 mt-3 flex items-center gap-1 transition-colors"
@@ -162,7 +162,7 @@ export default function Dashboard() {
                 <Link to="/timetable" className="text-xs font-medium text-ink/60 hover:text-indigo-650">Schedule</Link>
                 <Link to="/assessments" className="text-xs font-medium text-ink/60 hover:text-indigo-650">Assessments</Link>
                 <Link to={`/call/${course.id}`} className="text-xs font-medium text-clay hover:text-clay/70">Start call</Link>
-                {user.role === 'teacher' && (
+                {user.role === 'lecturer' && (
                   <>
                     <Link to={`/courses/${course.id}/attendance`} className="text-xs font-medium text-ink/60 hover:text-indigo-650">Attendance</Link>
                     <button

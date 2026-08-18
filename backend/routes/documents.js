@@ -10,7 +10,7 @@ async function canAccessAssessment(user, assessmentId) {
   const assessment = await Assessment.findByPk(assessmentId, { include: Course });
   if (!assessment) return null;
   const isOwnerStudent = user.role === 'student' && assessment.studentId === user.id;
-  const isCourseTeacher = user.role === 'teacher' && assessment.Course.teacherId === user.id;
+  const isCourseTeacher = user.role === 'lecturer' && assessment.Course.teacherId === user.id;
   return (isOwnerStudent || isCourseTeacher) ? assessment : null;
 }
 

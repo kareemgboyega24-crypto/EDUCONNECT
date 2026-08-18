@@ -20,7 +20,7 @@ export default function Announcements() {
     setAnnouncements(a);
     setCourses(c);
     setLoading(false);
-    client.post('/announcements/mark-read').catch(() => {}); // best-effort, don't block the page on this
+    client.post('/announcements/mark-read').catch(() => {});
   };
 
   useEffect(() => { load(); }, []);
@@ -50,10 +50,10 @@ export default function Announcements() {
         <div>
           <h1 className="font-display text-3xl font-semibold text-ink">Announcements</h1>
           <p className="text-ink/50 mt-1">
-            {user.role === 'teacher' ? 'Broadcast updates to an entire class at once.' : 'Updates from your teachers, newest first.'}
+            {user.role === 'lecturer' ? 'Broadcast updates to an entire class at once.' : 'Updates from your lecturers, newest first.'}
           </p>
         </div>
-        {user.role === 'teacher' && (
+        {user.role === 'lecturer' && (
           <button
             onClick={() => setShowForm(!showForm)}
             className="bg-ink text-white rounded-full px-5 py-2.5 text-sm font-medium hover:bg-indigo-650 transition-colors"
@@ -93,7 +93,7 @@ export default function Announcements() {
       ) : announcements.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-ink/20 p-12 text-center">
           <p className="text-ink/50">
-            {user.role === 'teacher' ? 'No announcements yet — post your first update above.' : 'No announcements yet.'}
+            {user.role === 'lecturer' ? 'No announcements yet — post your first update above.' : 'No announcements yet.'}
           </p>
         </div>
       ) : (
@@ -105,7 +105,7 @@ export default function Announcements() {
                   <p className="text-xs font-medium text-indigo-650 uppercase tracking-wide">{a.Course?.code}</p>
                   <h3 className="font-medium text-ink mt-1">{a.title}</h3>
                 </div>
-                {user.role === 'teacher' && a.author?.id === user.id && (
+                {user.role === 'lecturer' && a.author?.id === user.id && (
                   <button onClick={() => deleteAnnouncement(a.id)} className="flex-shrink-0 text-xs font-medium text-clay hover:underline">
                     Delete
                   </button>

@@ -5,11 +5,10 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 
-// GET /api/timetable - the logged-in user's full weekly schedule across all their courses
 router.get('/', async (req, res) => {
   let courseIds;
 
-  if (req.user.role === 'teacher') {
+  if (req.user.role === 'lecturer') {
     const courses = await Course.findAll({ where: { teacherId: req.user.id } });
     courseIds = courses.map(c => c.id);
   } else {
@@ -26,8 +25,7 @@ router.get('/', async (req, res) => {
   res.json(entries);
 });
 
-// POST /api/timetable - teacher adds a schedule slot to one of their courses
-router.post('/', requireRole('teacher'), async (req, res) => {
+router.post('/', requireRole('lecturer'), async (req, res) => {
   const { courseId, dayOfWeek, startTime, endTime, location } = req.body;
   if (courseId === undefined || dayOfWeek === undefined || !startTime || !endTime) {
     return res.status(400).json({ error: 'courseId, dayOfWeek, startTime and endTime are required' });
@@ -42,8 +40,7 @@ router.post('/', requireRole('teacher'), async (req, res) => {
   res.status(201).json(entry);
 });
 
-// DELETE /api/timetable/:id
-router.delete('/:id', requireRole('teacher'), async (req, res) => {
+router.delete('/:id', requireRole('lecturer'), async (req, res) => {
   const entry = await TimetableEntry.findByPk(req.params.id, { include: Course });
   if (!entry || entry.Course.teacherId !== req.user.id) {
     return res.status(404).json({ error: 'Entry not found' });

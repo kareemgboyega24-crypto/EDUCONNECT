@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
   if (req.user.role === 'student') where.studentId = req.user.id;
 
   let assessments;
-  if (req.user.role === 'teacher') {
+  if (req.user.role === 'lecturer') {
     const courses = await Course.findAll({ where: { teacherId: req.user.id } });
     where.courseId = courses.map(c => c.id);
     assessments = await Assessment.findAll({
@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.post('/bulk-assign', requireRole('teacher'), async (req, res) => {
+router.post('/bulk-assign', requireRole('lecturer'), async (req, res) => {
   try {
     const { courseId, title, questions } = req.body;
     if (!courseId || !title) return res.status(400).json({ error: 'courseId and title are required' });
@@ -128,7 +128,7 @@ router.get('/:id', async (req, res) => {
     if (!assessment) return res.status(404).json({ error: 'Not found' });
 
     const isOwnerStudent = req.user.role === 'student' && assessment.studentId === req.user.id;
-    const isCourseTeacher = req.user.role === 'teacher' && assessment.Course.teacherId === req.user.id;
+    const isCourseTeacher = req.user.role === 'lecturer' && assessment.Course.teacherId === req.user.id;
     if (!isOwnerStudent && !isCourseTeacher) return res.status(403).json({ error: 'Forbidden' });
 
     const payload = assessment.toJSON();
@@ -148,7 +148,7 @@ router.get('/:id', async (req, res) => {
 
 const VALID_STATUSES = ['assigned', 'submitted', 'reviewed', 'needs_revision'];
 
-router.patch('/:id', requireRole('teacher'), async (req, res) => {
+router.patch('/:id', requireRole('lecturer'), async (req, res) => {
   const assessment = await Assessment.findByPk(req.params.id, { include: Course });
   if (!assessment) return res.status(404).json({ error: 'Not found' });
   if (assessment.Course.teacherId !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
@@ -184,7 +184,7 @@ router.patch('/:id', requireRole('teacher'), async (req, res) => {
   res.json(assessment);
 });
 
-router.delete('/:id', requireRole('teacher'), async (req, res) => {
+router.delete('/:id', requireRole('lecturer'), async (req, res) => {
   try {
     const assessment = await Assessment.findByPk(req.params.id, { include: Course });
     if (!assessment) return res.status(404).json({ error: 'Not found' });

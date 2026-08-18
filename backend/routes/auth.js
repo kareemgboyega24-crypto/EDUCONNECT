@@ -18,26 +18,23 @@ function signToken(user) {
   );
 }
 
-// POST /api/auth/signup
-// Creates the account in an unverified state and emails a 6-digit code.
-// No token is issued yet - the account can't be used until /verify succeeds.
 router.post('/signup', authLimiter, async (req, res) => {
   try {
-    const { fullName, email, password, role, adminInviteCode } = req.body;
+    const { fullName, email, password, role, adminInviteCode, studentIdNumber } = req.body;
 
     if (!fullName || !email || !password || !role) {
       return res.status(400).json({ error: 'fullName, email, password and role are required' });
     }
-    if (!['teacher', 'student', 'admin'].includes(role)) {
-      return res.status(400).json({ error: 'role must be "teacher", "student", or "admin"' });
+    if (!['lecturer', 'student', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'role must be "lecturer", "student", or "admin"' });
     }
     if (role === 'admin') {
-      // Admin self-registration is gated behind a secret invite code (set as an
-      // environment variable, never committed to the repo) - without this, anyone
-      // could grant themselves full control over every user and course.
       if (!process.env.ADMIN_INVITE_CODE || adminInviteCode !== process.env.ADMIN_INVITE_CODE) {
         return res.status(403).json({ error: 'Invalid admin invite code' });
       }
+    }
+    if (role === 'student' && !studentIdNumber?.trim()) {
+      return res.status(400).json({ error: 'studentIdNumber is required for student accounts' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
@@ -61,6 +58,7 @@ router.post('/signup', authLimiter, async (req, res) => {
       passwordHash,
       role,
       avatarColor,
+      studentIdNumber: role === 'student' ? studentIdNumber.trim() : null,
       emailVerified: false,
       verificationCode: code,
       verificationCodeExpires
@@ -70,8 +68,6 @@ router.post('/signup', authLimiter, async (req, res) => {
       await sendVerificationEmail(user.email, user.fullName, code);
     } catch (mailErr) {
       console.error('Failed to send verification email:', mailErr);
-      // Account still created - user can use "Resend code" once email is fixed,
-      // rather than losing their signup entirely over a transient email failure.
     }
 
     res.status(201).json({ requiresVerification: true, email: user.email });
@@ -81,9 +77,6 @@ router.post('/signup', authLimiter, async (req, res) => {
   }
 });
 
-// POST /api/auth/verify
-// Confirms the 6-digit code and issues the real session token - this is the
-// actual moment the account becomes usable.
 router.post('/verify', async (req, res) => {
   try {
     const { email, code } = req.body;
@@ -93,11 +86,10 @@ router.post('/verify', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'No account found for that email' });
 
     if (user.emailVerified) {
-      // Already verified (e.g. double submission) - just log them in cleanly
       const token = signToken(user);
       return res.json({
         token,
-        user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor }
+        user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor, studentIdNumber: user.studentIdNumber }
       });
     }
 
@@ -116,7 +108,7 @@ router.post('/verify', async (req, res) => {
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor }
+      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor, studentIdNumber: user.studentIdNumber }
     });
   } catch (err) {
     console.error(err);
@@ -124,7 +116,6 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-// POST /api/auth/resend-code
 router.post('/resend-code', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
@@ -147,7 +138,6 @@ router.post('/resend-code', authLimiter, async (req, res) => {
   }
 });
 
-// POST /api/auth/login
 router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -180,7 +170,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor }
+      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor, studentIdNumber: user.studentIdNumber }
     });
   } catch (err) {
     console.error(err);
@@ -188,10 +178,6 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 });
 
-// POST /api/auth/forgot-password
-// Works identically for teachers and students - role has no bearing on this flow.
-// Always responds the same way regardless of whether the email exists, so the
-// response itself can't be used to check which emails have accounts.
 router.post('/forgot-password', authLimiter, async (req, res) => {
   try {
     const { email } = req.body;
@@ -218,7 +204,6 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
   }
 });
 
-// POST /api/auth/reset-password
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
@@ -251,27 +236,28 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// GET /api/auth/me - current user's own profile
 router.get('/me', requireAuth, async (req, res) => {
   const user = await User.findByPk(req.user.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor });
+  res.json({ id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor, studentIdNumber: user.studentIdNumber });
 });
 
-// PATCH /api/auth/me - update your own name and/or password.
-// Changing the password requires the current password, same as any account-security
-// best practice - prevents someone with a briefly-unlocked session from silently
-// locking the real owner out.
 router.patch('/me', requireAuth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const { fullName, currentPassword, newPassword } = req.body;
+    const { fullName, currentPassword, newPassword, studentIdNumber } = req.body;
 
     if (fullName !== undefined) {
       if (!fullName.trim()) return res.status(400).json({ error: 'Name cannot be empty' });
       user.fullName = fullName.trim();
+    }
+
+    if (studentIdNumber !== undefined) {
+      if (user.role !== 'student') return res.status(400).json({ error: 'Only student accounts have a student ID' });
+      if (!studentIdNumber.trim()) return res.status(400).json({ error: 'Student ID cannot be empty' });
+      user.studentIdNumber = studentIdNumber.trim();
     }
 
     if (newPassword) {
@@ -284,12 +270,10 @@ router.patch('/me', requireAuth, async (req, res) => {
 
     await user.save();
 
-    // Re-issue the token since it carries fullName - keeps the session consistent
-    // with the update without requiring the user to log in again.
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor }
+      user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role, avatarColor: user.avatarColor, studentIdNumber: user.studentIdNumber }
     });
   } catch (err) {
     console.error('PATCH /auth/me failed:', err);

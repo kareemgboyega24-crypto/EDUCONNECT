@@ -22,7 +22,10 @@ const Attendance = sequelize.define('Attendance', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('teacher', 'student'),
+    // Plain string rather than ENUM - same reasoning as User.role elsewhere in this
+    // project: a SQL Server CHECK constraint baked in at table-creation time would
+    // reject any role value introduced later (e.g. renaming 'teacher' to 'lecturer').
+    type: DataTypes.STRING(20),
     allowNull: false
   },
   joinedAt: {

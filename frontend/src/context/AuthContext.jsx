@@ -21,8 +21,8 @@ export function AuthProvider({ children }) {
     return applySession(data);
   }, []);
 
-  const signup = useCallback(async (fullName, email, password, role, adminInviteCode) => {
-    const { data } = await client.post('/auth/signup', { fullName, email, password, role, adminInviteCode });
+  const signup = useCallback(async (fullName, email, password, role, adminInviteCode, studentIdNumber) => {
+    const { data } = await client.post('/auth/signup', { fullName, email, password, role, adminInviteCode, studentIdNumber });
     return data;
   }, []);
 

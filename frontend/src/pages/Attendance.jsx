@@ -16,8 +16,6 @@ export default function Attendance() {
   const fmtTime = (d) => d ? new Date(d).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '—';
   const dayKey = (d) => new Date(d).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Group records by calendar day so each session's attendance is its own block,
-  // rather than one flat list mixing today's, yesterday's, and tomorrow's sessions together.
   const groupedByDay = data
     ? data.records.reduce((groups, r) => {
         const key = dayKey(r.joinedAt);
@@ -26,7 +24,6 @@ export default function Attendance() {
         return groups;
       }, {})
     : {};
-  // Object.keys doesn't guarantee chronological order, so sort groups by their most recent joinedAt
   const orderedDays = Object.keys(groupedByDay).sort(
     (a, b) => new Date(groupedByDay[b][0].joinedAt) - new Date(groupedByDay[a][0].joinedAt)
   );
@@ -68,6 +65,7 @@ export default function Attendance() {
                       <thead>
                         <tr className="text-left text-xs text-ink/40 uppercase tracking-wide border-b border-ink/10">
                           <th className="px-5 py-3">Name</th>
+                          <th className="px-5 py-3">Student ID</th>
                           <th className="px-5 py-3">Role</th>
                           <th className="px-5 py-3">Joined</th>
                           <th className="px-5 py-3">Left</th>
@@ -77,6 +75,7 @@ export default function Attendance() {
                         {records.map((r) => (
                           <tr key={r.id} className="border-b border-ink/5 last:border-0">
                             <td className="px-5 py-3 font-medium text-ink">{r.fullName}</td>
+                            <td className="px-5 py-3 text-ink/50">{r.studentIdNumber || '—'}</td>
                             <td className="px-5 py-3 text-ink/50 capitalize">{r.role}</td>
                             <td className="px-5 py-3 text-ink/50">{fmtTime(r.joinedAt)}</td>
                             <td className="px-5 py-3 text-ink/50">{r.leftAt ? fmtTime(r.leftAt) : <span className="text-green-700">In call</span>}</td>

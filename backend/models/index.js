@@ -41,6 +41,8 @@ Comment.belongsTo(User, { foreignKey: 'authorId', as: 'author', ...NO_CASCADE })
 Course.hasMany(Attendance, { foreignKey: 'courseId', as: 'attendanceRecords', ...NO_CASCADE });
 Attendance.belongsTo(Course, { foreignKey: 'courseId', ...NO_CASCADE });
 
+Attendance.belongsTo(User, { foreignKey: 'userId', as: 'account', ...NO_CASCADE });
+
 Assessment.hasMany(Question, { foreignKey: 'assessmentId', as: 'questions', ...NO_CASCADE });
 Question.belongsTo(Assessment, { foreignKey: 'assessmentId', ...NO_CASCADE });
 

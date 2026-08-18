@@ -6,13 +6,10 @@ const { Op } = require('sequelize');
 const router = express.Router();
 router.use(requireAuth);
 
-// GET /api/announcements/unread-count - powers the notification bell.
-// Counts announcements in the user's courses posted after they last checked,
-// excluding their own posts (you don't need to be notified of your own announcement).
 router.get('/unread-count', async (req, res) => {
   try {
     let courseIds;
-    if (req.user.role === 'teacher') {
+    if (req.user.role === 'lecturer') {
       const courses = await Course.findAll({ where: { teacherId: req.user.id } });
       courseIds = courses.map((c) => c.id);
     } else {
@@ -38,7 +35,6 @@ router.get('/unread-count', async (req, res) => {
   }
 });
 
-// POST /api/announcements/mark-read - clears the bell badge
 router.post('/mark-read', async (req, res) => {
   try {
     await User.update({ lastAnnouncementsViewedAt: new Date() }, { where: { id: req.user.id } });
@@ -49,10 +45,6 @@ router.post('/mark-read', async (req, res) => {
   }
 });
 
-// GET /api/announcements?courseId=xxx
-// With courseId: announcements for that one course. Without: a unified feed across
-// every course the user is part of (their own courses if teacher, enrolled courses
-// if student) - useful as a single place to catch up on everything at once.
 router.get('/', async (req, res) => {
   try {
     const { courseId } = req.query;
@@ -60,7 +52,7 @@ router.get('/', async (req, res) => {
     let courseIds;
     if (courseId) {
       courseIds = [courseId];
-    } else if (req.user.role === 'teacher') {
+    } else if (req.user.role === 'lecturer') {
       const courses = await Course.findAll({ where: { teacherId: req.user.id } });
       courseIds = courses.map((c) => c.id);
     } else {
@@ -68,9 +60,8 @@ router.get('/', async (req, res) => {
       courseIds = enrollments.map((e) => e.courseId);
     }
 
-    // Confirm access to the specific course if one was requested
     if (courseId) {
-      if (req.user.role === 'teacher') {
+      if (req.user.role === 'lecturer') {
         const course = await Course.findByPk(courseId);
         if (!course || course.teacherId !== req.user.id) return res.status(403).json({ error: 'Not your course' });
       } else {
@@ -95,8 +86,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/announcements - teacher posts to one of their own courses
-router.post('/', requireRole('teacher'), async (req, res) => {
+router.post('/', requireRole('lecturer'), async (req, res) => {
   try {
     const { courseId, title, body } = req.body;
     if (!courseId || !title || !body) return res.status(400).json({ error: 'courseId, title and body are required' });
@@ -119,8 +109,7 @@ router.post('/', requireRole('teacher'), async (req, res) => {
   }
 });
 
-// DELETE /api/announcements/:id - teacher removes their own announcement
-router.delete('/:id', requireRole('teacher'), async (req, res) => {
+router.delete('/:id', requireRole('lecturer'), async (req, res) => {
   try {
     const announcement = await Announcement.findByPk(req.params.id, { include: Course });
     if (!announcement) return res.status(404).json({ error: 'Not found' });
