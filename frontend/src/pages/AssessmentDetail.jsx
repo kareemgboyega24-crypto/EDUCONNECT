@@ -24,6 +24,11 @@ export default function AssessmentDetail() {
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [shortAnswerDrafts, setShortAnswerDrafts] = useState({});
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [showAiChat, setShowAiChat] = useState(false);
   const fileRef = useRef();
   const socketRef = useRef();
 
@@ -198,6 +203,29 @@ export default function AssessmentDetail() {
   const gradeShortAnswer = async (questionId, pointsAwarded) => {
     await client.patch(`/questions/${questionId}/grade`, { pointsAwarded });
     load();
+  };
+
+  const sendAiMessage = async (e) => {
+    e.preventDefault();
+    const text = aiInput.trim();
+    if (!text || aiLoading) return;
+
+    const newMessages = [...aiMessages, { role: 'user', content: text }];
+    setAiMessages(newMessages);
+    setAiInput('');
+    setAiError('');
+    setAiLoading(true);
+    try {
+      const { data } = await client.post(`/ai-help/${id}`, {
+        message: text,
+        history: aiMessages
+      });
+      setAiMessages([...newMessages, { role: 'assistant', content: data.reply }]);
+    } catch (err) {
+      setAiError(err.response?.data?.error || 'Something went wrong - try again in a moment.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   if (!assessment) return <div className="max-w-4xl mx-auto px-6 py-10 text-ink/40">Loading…</div>;
@@ -498,6 +526,58 @@ export default function AssessmentDetail() {
           })}
         </div>
       </div>
+
+      {user.role === 'student' && (
+        <div className="bg-white rounded-2xl border border-ink/10 p-5 mb-8">
+          <button
+            onClick={() => setShowAiChat(!showAiChat)}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-indigo-650/10 text-indigo-650 flex items-center justify-center flex-shrink-0">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                  <path d="M12 2a5 5 0 0 1 5 5c0 2.5-1.5 4-1.5 5.5V16a3.5 3.5 0 0 1-7 0v-3.5C8.5 11 7 9.5 7 7a5 5 0 0 1 5-5Z" />
+                  <path d="M9.5 20h5M10 22h4" />
+                </svg>
+              </span>
+              <h3 className="font-medium text-ink">Study helper</h3>
+            </div>
+            <span className="text-xs font-medium text-indigo-650">{showAiChat ? 'Hide' : 'Ask a question'}</span>
+          </button>
+
+          {showAiChat && (
+            <div className="mt-4">
+              <p className="text-xs text-ink/40 mb-3">
+                Explains concepts and points you in the right direction - it won't just hand you the answer.
+              </p>
+              <div className="space-y-3 mb-3 max-h-72 overflow-y-auto">
+                {aiMessages.length === 0 && (
+                  <p className="text-sm text-ink/30">Ask about anything on this assessment you're stuck on.</p>
+                )}
+                {aiMessages.map((m, i) => (
+                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <p className={`text-sm rounded-2xl px-3 py-2 max-w-[85%] ${m.role === 'user' ? 'bg-ink text-white' : 'bg-mist text-ink/80'}`}>
+                      {m.content}
+                    </p>
+                  </div>
+                ))}
+                {aiLoading && <p className="text-xs text-ink/30">Thinking…</p>}
+                {aiError && <p className="text-xs text-clay">{aiError}</p>}
+              </div>
+              <form onSubmit={sendAiMessage} className="flex gap-2">
+                <input
+                  value={aiInput} onChange={(e) => setAiInput(e.target.value)}
+                  placeholder="e.g. Why doesn't Dijkstra's work with negative weights?"
+                  className="flex-1 rounded-lg border border-ink/15 px-3 py-2 text-sm"
+                />
+                <button type="submit" disabled={aiLoading} className="bg-ink text-white text-sm font-medium rounded-lg px-4 py-2 hover:bg-indigo-650 disabled:opacity-50">
+                  Send
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-ink/10 p-5">
         <h3 className="font-medium text-ink mb-4">Feedback discussion</h3>

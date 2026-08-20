@@ -16,6 +16,7 @@ const adminRoutes = require('./routes/admin');
 const questionRoutes = require('./routes/questions');
 const announcementRoutes = require('./routes/announcements');
 const notificationRoutes = require('./routes/notifications');
+const aiHelpRoutes = require('./routes/aiHelp');
 
 const app = express();
 const server = http.createServer(app);
@@ -40,6 +41,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/ai-help', aiHelpRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
