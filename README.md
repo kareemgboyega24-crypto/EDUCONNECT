@@ -97,6 +97,5 @@ VITE_API_URL=http://localhost:5000
 
 ## Notes / things to harden before a real production launch
 
-- Password reset / email verification aren't implemented (out of scope for a course project, but flag it if this graduates beyond that)
 - File upload validation currently only caps size (25MB) — add MIME-type allowlisting if you want to be strict about what students can upload
 - The mesh WebRTC approach doesn't scale past roughly 6-8 simultaneous video participants; fine for lecturer+small group feedback sessions
