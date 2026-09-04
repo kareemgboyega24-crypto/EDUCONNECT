@@ -105,6 +105,21 @@ export default function Assessments() {
     load();
   };
 
+  // Group assessments by course so items from different courses are never
+  // visually mixed together - previously this was one flat list with only a
+  // small course-code label distinguishing entries, which made it look like
+  // an assessment "belonged" to the wrong course even though the underlying
+  // data was always correctly scoped to a single courseId.
+  const groupedByCourse = assessments.reduce((groups, a) => {
+    const key = a.Course?.id || 'unknown';
+    if (!groups[key]) groups[key] = { course: a.Course, items: [] };
+    groups[key].items.push(a);
+    return groups;
+  }, {});
+  const courseGroups = Object.values(groupedByCourse).sort((x, y) =>
+    (x.course?.code || '').localeCompare(y.course?.code || '')
+  );
+
   return (
     <div className="max-w-6xl mx-auto px-6 py-10">
       <div className="flex items-end justify-between mb-8">
@@ -245,37 +260,49 @@ export default function Assessments() {
           <p className="text-ink/50">No assessments yet.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {assessments.map((a) => (
-            <Link
-              key={a.id} to={`/assessments/${a.id}`}
-              className="flex items-center justify-between bg-white rounded-2xl border border-ink/10 p-5 hover:border-indigo-650/40 transition-colors"
-            >
-              <div>
-                <p className="font-medium text-ink">{a.title}</p>
-                <p className="text-sm text-ink/50">
-                  {a.Course?.code} {user.role === 'lecturer' && a.student ? `· ${a.student.fullName}` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {a.grade && (
-                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-mist text-ink border border-ink/10">
-                    Grade: {a.grade}
-                  </span>
+        <div className="space-y-8">
+          {courseGroups.map(({ course, items }) => (
+            <div key={course?.id || 'unknown'}>
+              <div className="flex items-center gap-2 mb-3">
+                <h2 className="font-display text-lg font-semibold text-ink">{course?.name || 'Unknown course'}</h2>
+                {course?.code && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-650/10 text-indigo-650">{course.code}</span>
                 )}
-                <span className={`text-xs font-medium px-3 py-1 rounded-full capitalize ${STATUS_STYLES[a.status]}`}>
-                  {a.status.replace('_', ' ')}
-                </span>
-                {user.role === 'lecturer' && (
-                  <button
-                    onClick={(e) => deleteAssessment(e, a.id)}
-                    className="text-xs font-medium text-clay/70 hover:text-clay hover:underline"
+              </div>
+              <div className="space-y-3">
+                {items.map((a) => (
+                  <Link
+                    key={a.id} to={`/assessments/${a.id}`}
+                    className="flex items-center justify-between bg-white rounded-2xl border border-ink/10 p-5 hover:border-indigo-650/40 transition-colors"
                   >
-                    Delete
-                  </button>
-                )}
+                    <div>
+                      <p className="font-medium text-ink">{a.title}</p>
+                      {user.role === 'lecturer' && a.student && (
+                        <p className="text-sm text-ink/50">{a.student.fullName}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {a.grade && (
+                        <span className="text-xs font-medium px-3 py-1 rounded-full bg-mist text-ink border border-ink/10">
+                          Grade: {a.grade}
+                        </span>
+                      )}
+                      <span className={`text-xs font-medium px-3 py-1 rounded-full capitalize ${STATUS_STYLES[a.status]}`}>
+                        {a.status.replace('_', ' ')}
+                      </span>
+                      {user.role === 'lecturer' && (
+                        <button
+                          onClick={(e) => deleteAssessment(e, a.id)}
+                          className="text-xs font-medium text-clay/70 hover:text-clay hover:underline"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </Link>
+                ))}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
