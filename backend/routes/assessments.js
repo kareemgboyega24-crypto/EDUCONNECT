@@ -1,5 +1,5 @@
 const express = require('express');
-const { Assessment, Course, Document, Comment, User, Enrollment, Question, Answer, Notification } = require('../models');
+const { Assessment, Course, Document, Comment, User, Enrollment, Question, Answer, Notification, Announcement } = require('../models');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { deleteStoredFile } = require('../config/storage');
 
@@ -59,6 +59,36 @@ router.post('/', async (req, res) => {
     if (!enrolled) return res.status(400).json({ error: 'That student is not enrolled in this course' });
 
     const assessment = await Assessment.create({ courseId, studentId, title, status: 'assigned' });
+
+    // Notify the student a new assessment has been assigned to them, mirroring
+    // the existing pattern used for grade and comment notifications - failure
+    // here is logged but never blocks the actual assignment from succeeding.
+    try {
+      await Notification.create({
+        userId: studentId,
+        type: 'assignment',
+        message: `${req.user.fullName} assigned you a new assessment: "${title}" (${course.name})`,
+        link: `/assessments/${assessment.id}`
+      });
+    } catch (notifyErr) {
+      console.error('Failed to create assignment notification (assessment still created):', notifyErr);
+    }
+
+    // Also post a course-wide announcement so the whole class sees that new
+    // assessment activity happened - worded generically (no student name) since
+    // Announcements are visible to every enrolled student, not just the one
+    // this particular assessment was assigned to.
+    try {
+      await Announcement.create({
+        courseId,
+        authorId: req.user.id,
+        title: 'New assessment assigned',
+        body: `A new assessment has been assigned: "${title}".`
+      });
+    } catch (announceErr) {
+      console.error('Failed to post assignment announcement (assessment still created):', announceErr);
+    }
+
     res.status(201).json(assessment);
   } catch (err) {
     console.error('POST /assessments failed:', err);
@@ -101,6 +131,32 @@ router.post('/bulk-assign', requireRole('lecturer'), async (req, res) => {
           order: i
         });
       }
+
+      // Same notification as the single-assign path, one per student in the class.
+      try {
+        await Notification.create({
+          userId: enrollment.studentId,
+          type: 'assignment',
+          message: `${req.user.fullName} assigned you a new assessment: "${title}" (${course.name})`,
+          link: `/assessments/${assessment.id}`
+        });
+      } catch (notifyErr) {
+        console.error('Failed to create bulk-assign notification (assessment still created):', notifyErr);
+      }
+    }
+
+    // One announcement for the whole bulk-assign action, not one per student -
+    // unlike the private per-student notification above, this is inherently
+    // class-wide already, so a single post covers it.
+    try {
+      await Announcement.create({
+        courseId,
+        authorId: req.user.id,
+        title: 'New assessment assigned',
+        body: `A new assessment has been assigned to the class: "${title}".`
+      });
+    } catch (announceErr) {
+      console.error('Failed to post bulk-assign announcement (assessments still created):', announceErr);
     }
 
     res.status(201).json({ count: createdAssessments.length });
