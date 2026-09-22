@@ -1,65 +1,69 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+const util = require('util');
 
-// Gmail SMTP: free, reliable, no domain verification needed - just requires an
-// "App Password" (not your regular Gmail password) generated from your Google
-// Account's security settings once 2-Step Verification is enabled.
-const transporter = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD
-  ? nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD
-      }
-    })
-  : null;
+const dnsLookup = util.promisify(dns.lookup);
 
 function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000)); // 6-digit code
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function sendVerificationEmail(toEmail, fullName, code) {
-  if (!transporter) {
-    console.warn(`Email not configured - verification code for ${toEmail} is: ${code}`);
-    return;
-  }
+// Render (and many similar hosts) have no outbound IPv6 route. smtp.gmail.com
+// resolves to both an IPv4 and an IPv6 address, and nodemailer's own internal
+// DNS resolution picks between them at random - meaning roughly half of all
+// send attempts fail immediately with ENETUNREACH or hang until ETIMEDOUT.
+// Passing a plain hostname to nodemailer triggers that random A/AAAA pick;
+// passing a literal IP address instead skips it entirely (nodemailer detects
+// a literal IP via net.isIP() and never resolves it further). Resolving the
+// address ourselves via dns.lookup with family: 4 guarantees only the IPv4
+// address is ever used, while tls.servername is set explicitly to the real
+// hostname so Gmail's TLS certificate still validates correctly against it.
+async function createTransporter() {
+  const { address } = await dnsLookup('smtp.gmail.com', { family: 4 });
 
-  await transporter.sendMail({
-    from: `"EduConnect" <${process.env.GMAIL_USER}>`,
-    to: toEmail,
-    subject: 'Your EduConnect verification code',
-    text: `Hi ${fullName},\n\nYour EduConnect verification code is: ${code}\n\nThis code expires in 15 minutes. If you didn't request this, you can ignore this email.`,
-    html: `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #161A2B;">EduConnect</h2>
-        <p>Hi ${fullName},</p>
-        <p>Your verification code is:</p>
-        <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #161A2B; margin: 24px 0;">${code}</p>
-        <p style="color: #666; font-size: 14px;">This code expires in 15 minutes. If you didn't request this, you can safely ignore this email.</p>
-      </div>
-    `
+  return nodemailer.createTransport({
+    host: address,
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD
+    },
+    tls: {
+      servername: 'smtp.gmail.com'
+    }
   });
 }
 
-async function sendPasswordResetEmail(toEmail, fullName, code) {
-  if (!transporter) {
-    console.warn(`Email not configured - password reset code for ${toEmail} is: ${code}`);
+async function sendVerificationEmail(to, fullName, code) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.log(`[No email configured] Verification code for ${to}: ${code}`);
     return;
   }
 
+  const transporter = await createTransporter();
   await transporter.sendMail({
-    from: `"EduConnect" <${process.env.GMAIL_USER}>`,
-    to: toEmail,
+    from: process.env.GMAIL_USER,
+    to,
+    subject: 'Your EduConnect verification code',
+    text: `Hi ${fullName},\n\nYour verification code is: ${code}\n\nThis code expires in 15 minutes.`,
+    html: `<p>Hi ${fullName},</p><p>Your verification code is: <strong>${code}</strong></p><p>This code expires in 15 minutes.</p>`
+  });
+}
+
+async function sendPasswordResetEmail(to, fullName, code) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    console.log(`[No email configured] Password reset code for ${to}: ${code}`);
+    return;
+  }
+
+  const transporter = await createTransporter();
+  await transporter.sendMail({
+    from: process.env.GMAIL_USER,
+    to,
     subject: 'Reset your EduConnect password',
-    text: `Hi ${fullName},\n\nSomeone requested a password reset for your EduConnect account. Your reset code is: ${code}\n\nThis code expires in 15 minutes. If you didn't request this, you can safely ignore this email - your password won't be changed.`,
-    html: `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2 style="color: #161A2B;">EduConnect</h2>
-        <p>Hi ${fullName},</p>
-        <p>Someone requested a password reset for your account. Your reset code is:</p>
-        <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #161A2B; margin: 24px 0;">${code}</p>
-        <p style="color: #666; font-size: 14px;">This code expires in 15 minutes. If you didn't request this, you can safely ignore this email - your password won't be changed.</p>
-      </div>
-    `
+    text: `Hi ${fullName},\n\nYour password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
+    html: `<p>Hi ${fullName},</p><p>Your password reset code is: <strong>${code}</strong></p><p>This code expires in 15 minutes.</p>`
   });
 }
 
