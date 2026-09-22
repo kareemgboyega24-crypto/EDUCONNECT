@@ -88,7 +88,7 @@ router.get('/:id/grades/export', requireRole('lecturer'), async (req, res) => {
 
     const assessments = await Assessment.findAll({
       where: { courseId: course.id },
-      include: [{ model: User, as: 'student', attributes: ['fullName', 'email'] }],
+      include: [{ model: User, as: 'student', attributes: ['fullName', 'email', 'studentIdNumber'] }],
       order: [[{ model: User, as: 'student' }, 'fullName', 'ASC']]
     });
 
@@ -98,9 +98,10 @@ router.get('/:id/grades/export', requireRole('lecturer'), async (req, res) => {
       return str;
     };
 
-    const header = ['Student Name', 'Student Email', 'Assessment', 'Status', 'Grade', 'Feedback Summary'];
+    const header = ['Student Name', 'Student ID', 'Student Email', 'Assessment', 'Status', 'Grade', 'Feedback Summary'];
     const rows = assessments.map((a) => [
       a.student?.fullName || '',
+      a.student?.studentIdNumber || '',
       a.student?.email || '',
       a.title,
       a.status.replace('_', ' '),
