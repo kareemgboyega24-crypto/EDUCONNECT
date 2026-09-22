@@ -1,49 +1,43 @@
-const nodemailer = require('nodemailer');
-const dns = require('dns');
-const util = require('util');
-
-const dnsLookup = util.promisify(dns.lookup);
+// Switched from Gmail SMTP to Resend's HTTP API. Render's free tier blocks
+// all outbound SMTP ports (25, 465, 587) as an anti-spam measure - a hard
+// network-level restriction with no code-level workaround. Resend sends over
+// plain HTTPS (port 443), which is never blocked, sidestepping the problem
+// entirely rather than trying to work around it.
 
 function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-// Render (and many similar hosts) have no outbound IPv6 route. smtp.gmail.com
-// resolves to both an IPv4 and an IPv6 address, and nodemailer's own internal
-// DNS resolution picks between them at random - meaning roughly half of all
-// send attempts fail immediately with ENETUNREACH or hang until ETIMEDOUT.
-// Passing a plain hostname to nodemailer triggers that random A/AAAA pick;
-// passing a literal IP address instead skips it entirely (nodemailer detects
-// a literal IP via net.isIP() and never resolves it further). Resolving the
-// address ourselves via dns.lookup with family: 4 guarantees only the IPv4
-// address is ever used, while tls.servername is set explicitly to the real
-// hostname so Gmail's TLS certificate still validates correctly against it.
-async function createTransporter() {
-  const { address } = await dnsLookup('smtp.gmail.com', { family: 4 });
-
-  return nodemailer.createTransport({
-    host: address,
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD
-    },
-    tls: {
-      servername: 'smtp.gmail.com'
-    }
-  });
-}
-
-async function sendVerificationEmail(to, fullName, code) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    console.log(`[No email configured] Verification code for ${to}: ${code}`);
+async function sendViaResend({ to, subject, text, html }) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log(`[No email configured] Would have sent "${subject}" to ${to}`);
     return;
   }
 
-  const transporter = await createTransporter();
-  await transporter.sendMail({
-    from: process.env.GMAIL_USER,
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`
+    },
+    body: JSON.stringify({
+      from: 'EduConnect <noreply@edduconnect.com>',
+      to,
+      subject,
+      text,
+      html
+    })
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    console.error('Resend API error:', response.status, errBody);
+    throw new Error('Failed to send email via Resend');
+  }
+}
+
+async function sendVerificationEmail(to, fullName, code) {
+  await sendViaResend({
     to,
     subject: 'Your EduConnect verification code',
     text: `Hi ${fullName},\n\nYour verification code is: ${code}\n\nThis code expires in 15 minutes.`,
@@ -52,14 +46,7 @@ async function sendVerificationEmail(to, fullName, code) {
 }
 
 async function sendPasswordResetEmail(to, fullName, code) {
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    console.log(`[No email configured] Password reset code for ${to}: ${code}`);
-    return;
-  }
-
-  const transporter = await createTransporter();
-  await transporter.sendMail({
-    from: process.env.GMAIL_USER,
+  await sendViaResend({
     to,
     subject: 'Reset your EduConnect password',
     text: `Hi ${fullName},\n\nYour password reset code is: ${code}\n\nThis code expires in 15 minutes.`,
